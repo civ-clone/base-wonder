@@ -106,5 +106,13 @@
    2000,
    0
   ]
+ ],
+ "buildPriority": [
+  [
+   "civ1-wonder:city/build-priority/wonder",
+   "BuildPriority",
+   2000,
+   5
+  ]
  ]
 }

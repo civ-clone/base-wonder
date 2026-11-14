@@ -24,6 +24,8 @@ its Wonder rules from these with its own ids, numbers and Wonder classes.
 - `lib/lifecycleRules`: `wonderBuiltRules` (register the Wonder, drop rivals' builds, emit `wonder:built`),
   `wonderDestroyedRules`, `dropBuiltWonderRules(prefix, Production, …)` and `wonderObsoleteRules` (emit
   `wonder:obsolete`).
+- `lib/buildPriority`: `wonderPriorityRules(prefix, { Production, isShip, forShips?, neverWanted?, priority?,
+  minimumShields? }, …)`, how much a city on Auto or a computer player wants a Wonder.
 - `lib/greatLibraryRules`: the Great Library's `Complete` rule, `{ GreatLibrary, holders, counts? }`.
 - `lib/helpBuildWonder`: `helpBuildWonderActionRules(prefix, …)` (a unit that `TradeMissions` helps build its
   player's Wonder) and `wonderHelpedRules(prefix, Production, …)` (it adds what it cost).

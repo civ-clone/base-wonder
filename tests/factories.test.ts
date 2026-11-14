@@ -23,7 +23,15 @@ import {
   freeResearchOnCompletion,
   freeResearchStartedRules,
 } from '../lib/freeResearch';
-import { obsoleteRulesFor } from '../lib/obsoleteRules';
+import { deriveObsoleteRules, obsoleteRulesFor } from '../lib/obsoleteRules';
+import {
+  discoveredByPlayer,
+  notDiscoveredByAnyPlayer,
+  notDiscoveredByPlayer,
+} from '../lib/hasDiscovered';
+import Unit from '@civ-clone/core-unit/Unit';
+import UnitRegistry from '@civ-clone/core-unit/UnitRegistry';
+import { wonderPriorityRules } from '../lib/buildPriority';
 import Advance from '@civ-clone/core-science/Advance';
 import AdvanceRegistry from '@civ-clone/core-science/AdvanceRegistry';
 import City from '@civ-clone/core-city/City';
@@ -195,6 +203,14 @@ describe('rule factories, as civ1-wonder registers them', (): void => {
       ['requiresWonder0', () => buildRulesFor(requiresWonder[0])],
       ['obsolete0', () => obsoleteRulesFor(obsoletedBy[0])],
       ['unitAction', () => helpBuildWonderActionRules('civ1-wonder')],
+      [
+        'buildPriority',
+        () =>
+          wonderPriorityRules('civ1-wonder', {
+            Production,
+            isShip: () => false,
+          }),
+      ],
       ['wonderHelped', () => wonderHelpedRules('civ1-wonder', Production)],
     ] as [string, () => Rule<any, any>[]][]
   ).forEach(([key, rules]): void =>
@@ -906,5 +922,150 @@ describe('helping build a Wonder', (): void => {
     expect(added.length).to.equal(1);
     expect(added[0]).instanceof(Production);
     expect(added[0].value()).to.equal(50);
+  });
+});
+
+describe('deriveObsoleteRules', (): void => {
+  it('makes an obsolete entry’s rule, and none for another relation', (): void => {
+    const { ruleRegistry, playerResearchRegistry, wonderRegistry } = setUp(),
+      derive = deriveObsoleteRules(
+        playerResearchRegistry,
+        ruleRegistry,
+        wonderRegistry
+      );
+
+    expect(
+      derive(
+        table('test:obsolete', 'obsoletedBy', [[Colossus, Electricity]], {
+          range: 'world',
+        })[0]
+      ).map(fingerprint)
+    ).to.deep.equal([['test:obsolete/Colossus', 'Complete', 2000, 3]]);
+    expect(
+      derive(table('test:requires', 'requires', [[Colossus, Electricity]])[0])
+    ).to.deep.equal([]);
+  });
+});
+
+describe('hasDiscovered', (): void => {
+  it('asks the item’s player, or anyone', (): void => {
+    const { playerResearchRegistry, research, city, players } = setUp(),
+      mine = city(players[0]),
+      theirs = city(players[1]);
+
+    expect(
+      discoveredByPlayer(Electricity, playerResearchRegistry).validate(mine)
+    ).false;
+    expect(
+      notDiscoveredByPlayer(Electricity, playerResearchRegistry).validate(mine)
+    ).true;
+    expect(notDiscoveredByPlayer(null, playerResearchRegistry).validate(mine))
+      .true;
+    expect(
+      notDiscoveredByAnyPlayer(Electricity, playerResearchRegistry).validate()
+    ).true;
+    expect(notDiscoveredByAnyPlayer(null, playerResearchRegistry).validate())
+      .true;
+
+    research[1].addAdvance(Electricity);
+
+    expect(
+      discoveredByPlayer(Electricity, playerResearchRegistry).validate(mine)
+    ).false;
+    expect(
+      discoveredByPlayer(Electricity, playerResearchRegistry).validate(theirs)
+    ).true;
+    expect(
+      notDiscoveredByPlayer(Electricity, playerResearchRegistry).validate(mine)
+    ).true;
+    expect(
+      notDiscoveredByPlayer(Electricity, playerResearchRegistry).validate(
+        theirs
+      )
+    ).false;
+    expect(
+      notDiscoveredByAnyPlayer(Electricity, playerResearchRegistry).validate()
+    ).false;
+  });
+});
+
+describe('wonderPriorityRules', (): void => {
+  class Ship extends Unit {}
+
+  it('wants a Wonder that does something, once, in a city making enough shields', (): void => {
+    const {
+        cityBuildRegistry,
+        playerResearchRegistry,
+        requirementRegistry,
+        research,
+        city,
+        players,
+      } = setUp(),
+      cityRegistry = new CityRegistry(),
+      unitRegistry = new UnitRegistry(),
+      here = city(players[0]),
+      there = city(players[0]),
+      building: { Item: unknown } = { Item: null },
+      cityBuild = (target: City, Item: () => unknown) =>
+        Object.assign(Object.create(CityBuild.prototype), {
+          city: (): City => target,
+          building: () => (Item() === null ? null : { item: () => Item() }),
+        }) as CityBuild,
+      ownBuild = cityBuild(here, () => null),
+      [rule] = wonderPriorityRules(
+        'civ2-wonder',
+        {
+          Production,
+          isShip: (unit) => unit instanceof Ship,
+          forShips: [Pyramids],
+          neverWanted: [GreatLibrary],
+          priority: 2,
+          minimumShields: 4,
+        },
+        cityRegistry,
+        cityBuildRegistry,
+        playerResearchRegistry,
+        unitRegistry,
+        requirementRegistry
+      ),
+      wants = (Item: unknown, shields = 4): boolean =>
+        rule.validate(ownBuild, Item as any, [new Production(shields)]);
+
+    cityRegistry.register(here, there);
+    cityBuildRegistry.register(
+      ownBuild,
+      cityBuild(there, () => building.Item)
+    );
+
+    expect(rule.id()).to.equal('civ2-wonder:city/build-priority/wonder');
+    expect(wants(Colossus)).true;
+    expect(rule.process(ownBuild, Colossus as any, [])).to.equal(2);
+    expect(wants(Granary)).false;
+    expect(wants(Colossus, 3)).false;
+    expect(wants(GreatLibrary)).false;
+    expect(wants(Pyramids)).false;
+
+    unitRegistry.register(
+      Object.assign(Object.create(Ship.prototype), {
+        player: () => players[0],
+      }) as Ship
+    );
+
+    expect(wants(Pyramids)).true;
+
+    building.Item = Colossus;
+
+    expect(wants(Colossus)).false;
+
+    building.Item = null;
+    requirementRegistry.add(
+      null,
+      ...table('test:obsolete', 'obsoletedBy', [[Colossus, Electricity]], {
+        range: 'world',
+      })
+    );
+    research[2].addAdvance(Electricity);
+
+    expect(wants(Colossus)).false;
   });
 });
