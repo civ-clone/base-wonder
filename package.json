@@ -1,6 +1,6 @@
 {
   "name": "@civ-clone/base-wonder",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Wonder rules shared by rulesets: ownership, obsolescence, build-once and build requirements, completion and loss, the Great Library and free research.",
   "repository": "git@github.com:civ-clone/base-wonder.git",
   "keywords": [
