@@ -90,5 +90,21 @@
    2000,
    3
   ]
+ ],
+ "unitAction": [
+  [
+   "civ1-wonder:unit/action/help-build-wonder",
+   "Action",
+   2000,
+   5
+  ]
+ ],
+ "wonderHelped": [
+  [
+   "civ1-wonder:unit/wonder-helped/add-production",
+   "WonderHelped",
+   2000,
+   0
+  ]
  ]
 }

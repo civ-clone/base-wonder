@@ -45,6 +45,13 @@ import Wonder from '@civ-clone/core-wonder/Wonder';
 import WonderRegistry from '@civ-clone/core-wonder/WonderRegistry';
 import Yield from '@civ-clone/core-yield/Yield';
 import { expect } from 'chai';
+import {
+  helpBuildWonderActionRules,
+  wonderHelpedRules,
+} from '../lib/helpBuildWonder';
+import CityRegistry from '@civ-clone/core-city/CityRegistry';
+import HelpBuildWonder from '@civ-clone/base-unit-action-help-build-wonder/HelpBuildWonder';
+import { buildCost } from '@civ-clone/core-city-build/Rules/BuildCost';
 import { greatLibraryRules } from '../lib/greatLibraryRules';
 import { onWonderLandMass } from '../lib/onWonderLandMass';
 import { readFileSync } from 'fs';
@@ -96,14 +103,15 @@ const setUp = () => {
     city = (player: Player, tile: object = {}) => {
       let destroyed = false;
 
-      return {
+      // A `City` the registries accept, answering only what the rules ask.
+      return Object.assign(Object.create(City.prototype), {
         destroyed: (): boolean => destroyed,
         destroy: (): void => {
           destroyed = true;
         },
         player: (): Player => player,
         tile: () => tile,
-      } as unknown as City & { destroy(): void };
+      }) as City & { destroy(): void };
     },
     build = (wonder: Wonder): Wonder => {
       cityImprovementRegistry.register(wonder);
@@ -186,6 +194,8 @@ describe('rule factories, as civ1-wonder registers them', (): void => {
       ['requiresAdvance0', () => buildRulesFor(requiresAdvance[0])],
       ['requiresWonder0', () => buildRulesFor(requiresWonder[0])],
       ['obsolete0', () => obsoleteRulesFor(obsoletedBy[0])],
+      ['unitAction', () => helpBuildWonderActionRules('civ1-wonder')],
+      ['wonderHelped', () => wonderHelpedRules('civ1-wonder', Production)],
     ] as [string, () => Rule<any, any>[]][]
   ).forEach(([key, rules]): void =>
     it(`makes ${key} as civ1-wonder does`, (): void => {
@@ -819,5 +829,82 @@ describe('onWonderLandMass', (): void => {
     expect(criterion.validate(city(players[0], b))).true;
     expect(criterion.validate(city(players[0], c))).false;
     expect(criterion.validate(city(players[1], b))).false;
+  });
+});
+
+describe('helping build a Wonder', (): void => {
+  it('offers the action next to its player’s city building a Wonder, and makes the action for that city', (): void => {
+    const { cityBuildRegistry, ruleRegistry, city, players } = setUp(),
+      cityRegistry = new CityRegistry(),
+      [to, elsewhere] = [{}, {}],
+      own = city(players[0], to),
+      building: { Item: unknown } = { Item: Colossus },
+      cityBuild = Object.assign(Object.create(CityBuild.prototype), {
+        city: (): City => own,
+        building: () =>
+          building.Item === null ? null : { item: () => building.Item },
+      }) as CityBuild,
+      [rule] = helpBuildWonderActionRules(
+        'civ2-wonder',
+        cityRegistry,
+        cityBuildRegistry,
+        ruleRegistry
+      ),
+      // The criteria after the shared ones: whose city, and whether it builds a Wonder.
+      [, , , ownCity, buildsWonder] = (rule as any)._criteria._criteria,
+      unit = (player: Player) =>
+        ({ player: (): Player => player, tile: () => elsewhere } as any);
+
+    cityRegistry.register(own);
+    cityBuildRegistry.register(cityBuild);
+
+    expect(rule.id()).to.equal('civ2-wonder:unit/action/help-build-wonder');
+    expect(ownCity.validate(unit(players[0]), to)).true;
+    expect(ownCity.validate(unit(players[1]), to)).false;
+    expect(buildsWonder.validate(unit(players[0]), to)).true;
+
+    building.Item = Granary;
+
+    expect(buildsWonder.validate(unit(players[0]), to)).false;
+
+    building.Item = null;
+
+    expect(buildsWonder.validate(unit(players[0]), to)).false;
+
+    const action = rule.process(unit(players[0]), to) as HelpBuildWonder;
+
+    expect(action).instanceof(HelpBuildWonder);
+    expect(action.to()).to.equal(to);
+  });
+
+  it('adds what the unit cost to the city’s build, as `Production`', (): void => {
+    const { cityBuildRegistry, ruleRegistry, city, players } = setUp(),
+      here = city(players[0]),
+      added: Yield[] = [];
+
+    class Caravan {}
+
+    ruleRegistry.register(...buildCost(Caravan as any, 50));
+    cityBuildRegistry.register(
+      Object.assign(Object.create(CityBuild.prototype), {
+        city: (): City => here,
+        add: (production: Yield): void => {
+          added.push(production);
+        },
+      })
+    );
+
+    const [rule] = wonderHelpedRules(
+      'civ2-wonder',
+      Production,
+      cityBuildRegistry,
+      ruleRegistry
+    );
+
+    rule.process(new (Caravan as any)(), here);
+
+    expect(added.length).to.equal(1);
+    expect(added[0]).instanceof(Production);
+    expect(added[0].value()).to.equal(50);
   });
 });

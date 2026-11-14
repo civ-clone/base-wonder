@@ -25,6 +25,8 @@ its Wonder rules from these with its own ids, numbers and Wonder classes.
   `wonderDestroyedRules`, `dropBuiltWonderRules(prefix, Production, …)` and `wonderObsoleteRules` (emit
   `wonder:obsolete`).
 - `lib/greatLibraryRules`: the Great Library's `Complete` rule, `{ GreatLibrary, holders, counts? }`.
+- `lib/helpBuildWonder`: `helpBuildWonderActionRules(prefix, …)` (a unit that `TradeMissions` helps build its
+  player's Wonder) and `wonderHelpedRules(prefix, Production, …)` (it adds what it cost).
 - `lib/freeResearch`: free research completions owed as a `PendingEffect` (Darwin's Voyage):
   `freeResearchOnCompletion(WonderType, handler, count, …)` and `freeResearchStartedRules(handler, …)`.
 

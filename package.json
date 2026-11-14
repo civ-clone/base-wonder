@@ -28,6 +28,8 @@
     "typescript": "^4.0.0"
   },
   "dependencies": {
+    "@civ-clone/base-unit-action-help-build-wonder": "^0.1.0",
+    "@civ-clone/base-unit-trait-trade-missions": "^0.1.0",
     "@civ-clone/core-city": "^0.1.24",
     "@civ-clone/core-city-build": "^0.1.22",
     "@civ-clone/core-city-improvement": "^0.1.8",
