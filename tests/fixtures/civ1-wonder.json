@@ -1,0 +1,94 @@
+{
+ "builtOnce": [
+  [
+   "civ1-wonder:city/build/once",
+   "Build",
+   2000,
+   1
+  ]
+ ],
+ "buildingComplete": [
+  [
+   null,
+   "BuildingComplete",
+   2000,
+   1
+  ],
+  [
+   null,
+   "BuildingComplete",
+   2000,
+   1
+  ],
+  [
+   null,
+   "BuildingComplete",
+   2000,
+   1
+  ]
+ ],
+ "destroyed": [
+  [
+   null,
+   "Destroyed",
+   2000,
+   1
+  ]
+ ],
+ "processYield": [
+  [
+   "civ1-wonder:city/process-yield/drop-built-wonder",
+   "ProcessYield",
+   1000,
+   2
+  ]
+ ],
+ "greatLibrary": [
+  [
+   null,
+   "Complete",
+   2000,
+   3
+  ]
+ ],
+ "obsoleteAnnounced": [
+  [
+   null,
+   "Obsolete",
+   2000,
+   0
+  ]
+ ],
+ "started": [
+  [
+   null,
+   "Started",
+   2000,
+   1
+  ]
+ ],
+ "requiresAdvance0": [
+  [
+   "civ1-wonder:city/build/requires-advance/Colossus",
+   "Build",
+   2000,
+   1
+  ]
+ ],
+ "requiresWonder0": [
+  [
+   "civ1-wonder:city/build/requires-wonder/Nuclear",
+   "Build",
+   2000,
+   1
+  ]
+ ],
+ "obsolete0": [
+  [
+   "civ1-wonder:wonder/obsolete/Colossus",
+   "Complete",
+   2000,
+   3
+  ]
+ ]
+}
